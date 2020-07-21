@@ -1,0 +1,27 @@
+安全参数
+n   667
+phi 616
+k   99
+
+公私钥
+    pk  sk
+e   3   411
+b   13  237
+s   5   493
+t   17  145
+
+order   [111,222,333]   异或结果508
+sig(order)  508**237=317
+enc(key)    99**5=592
+enc(order||sig(order))  enc(508||317)=193^99=162
+venc(sig(order))    venc(508**237)=venc(317)=317**3=427
+enc(order)  [12,189,302]
+sig(enc(order)) [12,189,302]**237=[331,636,476]
+
+confirm 567
+sig(confirm) 567**493=152
+enc(confirm)    567^99=596
+enc(sig(confirm))   152^99=251
+
+waybill [3,5,1] 异或结果7
+venc(sig(waybill))  venc(7**411)=venc(451)=451**3=7
