@@ -83,6 +83,11 @@ contract Order {
         _;
     }
 
+    modifier isBuyerOrSeller() {
+        require(msg.sender == buyer || msg.sender == seller);
+        _;
+    }
+
     modifier isTTP() {
         require(msg.sender == owner);
         _;
@@ -247,6 +252,33 @@ contract Order {
             seller.transfer(p);//卖家收款
         }
     }
+
+    //快递不付款
+    //"0x68797c0208172a190059290a1436041c1a0406696f6e20737563636565646564"
+    function SellerGetPaidByExpress(bytes32 _sig_enc_confirmation) isSeller public {
+        //超过送货期限
+        require(now > time_deliver);
+        require(enc_confirmation == _sig_enc_confirmation ^ stringToBytes32(pk_b));
+        enc_confirmation == "";
+        seller.transfer(p);
+    }
+
+    //快递不付款
+    /*
+    ["0x6b75756c69635f6b65795f6f665f627579657200000000000000000000000000",
+    "0x29101b6c69635f6b65795f6f665f627579657200000000000000000000000000",
+    "0x2b68785b0c021c5f2149392b5139504249551163386530414444324636343238"]
+    */
+    function BuyerGetPaidByExpress(bytes32[3] _sig_enc_order) isBuyer public {
+        //超过送货期限
+        require(now > time_deliver);
+        //用自己的签名赎回
+        for (uint i = 0; i < 3; i++) {
+            require(enc_order[i] == _sig_enc_order[i] ^ stringToBytes32(pk_b));
+        }
+        msg.sender.transfer(p);
+    }
+
 
     //买家收货付款
     /*
