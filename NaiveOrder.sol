@@ -46,7 +46,6 @@ contract NaiveOrder {
     RSA public rsa;
     string string_confimation = "signature verification succeeded";
     
-    //暂时让买家公私钥一致
     //3,5,13,17
     constructor (uint256 _pk_e, uint256 _pk_s, uint256 _pk_b, uint256 _pk_t) public {
         owner = msg.sender;
@@ -57,14 +56,14 @@ contract NaiveOrder {
         rsa = new RSA();
     }
 
-    //买方下订单
+    //buyer places the order
     //[12,189,302,162],592
     function PlaceOrder(uint256[4] _enc_order_and_sig, uint256 _enc_key) public {
-        //只能调用一次
+        //only be called once
         require(buyer == 0x0000000000000000000000000000000000000000);
         buyer = msg.sender;
         enc_order_and_sig = _enc_order_and_sig;
-        //分离出加密的订单
+        //extract the encrypted order
         for (uint i = 0; i < 3; i++) {
             enc_order[i] = _enc_order_and_sig[i];
         }
@@ -72,13 +71,13 @@ contract NaiveOrder {
         emit OrderPlaced(msg.sender, "places the order successfully!");
     }
 
-    //卖方确认订单
+    //seller confirms the order
     //493,53
     function ConfirmOrder(uint256 _sk_s, uint256 _venc_sig_confirmation) payable public {
         seller = msg.sender;
         p = msg.value;
         venc_sig_confirmation = _venc_sig_confirmation;
-        //解密
+        //decrypt
         uint256 k = rsa.decode(enc_key, _sk_s);
         emit Data("key", k);
         uint256 product_name = k ^ enc_order_and_sig[0];
@@ -92,7 +91,7 @@ contract NaiveOrder {
         uint256 order_sig = k ^ enc_order_and_sig[3];
         uint256 sig = order_sig ^ order;
         emit Data("sig", sig);
-        //校验签名
+        //verify the signature
         if (rsa.encode(sig, pk_b) != order) {
             emit OrderConfirmed(msg.sender, "confirm the order unsuccessfully!");
             msg.sender.transfer(p);
@@ -110,46 +109,44 @@ contract NaiveOrder {
         }
     }
 
-    //买家支付
-    //加密的签名
+    //buyer pays
+    //signature
     //427
     function PayOrder(uint256 _venc_sig_order) payable public {
         //p = msg.value;//还未对p的值进行校验（至少要求等于商品金额)
         venc_sig_order = _venc_sig_order;
     }
 
-    //买家不支付
+    //if buyer refuses to pay
     //281
     function WithdrawDeposit(uint256 _sig_enc_confirmation) public {
         require(enc_confirmation == rsa.encode(_sig_enc_confirmation, pk_b));
         msg.sender.transfer(1 ether);
     }
 
-    //快递抵押
+    //express deposits
     //[3,5,1],7
     function DepositWaybill(uint256[3] _waybill, uint256 _venc_sig_waybill) payable public {
         waybill = _waybill;
         express = msg.sender;
-        //发货日期还未过，过了直接退还买家的存款
+        //before the limit of delivery, returns the deposit directly to buyer
         venc_sig_waybill = _venc_sig_waybill;
     }
 
-    //快递不抵押
+    //if express refuses to deposit
     //[331,636,476]
     function WithdrawPayment(uint256[3] _sig_enc_order) public {
-        //用自己的签名赎回
+        //withdraw by signature
         for (uint i = 0; i < 3; i++) {
             require(enc_order[i] == rsa.encode(_sig_enc_order[i], pk_b)); 
         }
         msg.sender.transfer(1 ether);
     } 
 
-    //卖家送货
-
-    //卖家不送货
+    //if seller refuses to deliver
     //451
     function RedeemDeposit(uint256 _sig_waybill) public {
-        //用自己的签名赎回
+        //withdraw by signature
         uint256 _waybill;
         for(uint i = 0; i < 3; i++) {
             _waybill ^= waybill[i];
@@ -159,7 +156,7 @@ contract NaiveOrder {
         }
     }
     
-    //快递付款
+    //express pays
     //451
     function PayProduct(uint256 _sig_waybill) public {
         uint256 _waybill;
@@ -167,11 +164,11 @@ contract NaiveOrder {
             _waybill ^= waybill[i];
         }
         if (rsa.encode(_sig_waybill, pk_e) == _waybill) {
-            buyer.transfer(1 ether);//卖家收款
+            buyer.transfer(1 ether);
         }
     }
 
-    //买家收货付款
+    //buyer picks up the products and pays
     //[331,636,476]
     function ReceiveProduct(uint256[3] _sig_enc_order) public {
         for (uint i = 0; i < 3; i++) {
@@ -180,14 +177,14 @@ contract NaiveOrder {
         express.transfer(1 ether);
     }
 
-    //买家不签收
+    //if buyer refuses to pick up
     //_sig_enc_message = _sig_enc_confirmation/_sig_waybill
     //281
-    //或
+    //or
     //451
     function GetPaidBySeller(uint256 _sig_enc_message) public {
-        //超过退款期限，默认买家不退货
-        //快递取回抵押
+        //expires the return limit
+        //express withdraws
         if (msg.sender == express) {
             uint256 _waybill;
             for(uint i = 0; i < 3; i++) {
@@ -197,7 +194,7 @@ contract NaiveOrder {
                 express.transfer(1 ether);
             }
         }
-        //卖家取回抵押
+        //seller withdraws
         if (msg.sender == seller) {
             if (rsa.encode(_sig_enc_message, pk_b) == enc_confirmation) {
                 enc_confirmation = 0;
@@ -206,7 +203,6 @@ contract NaiveOrder {
         }
     }
 
-    //更进一步验证订单信息
     function FurtherOrderVerification() internal pure {}
 
     function bytesToUint(bytes memory b) public pure returns (uint256) {

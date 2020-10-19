@@ -36,7 +36,6 @@ contract RSA {
         return _d;
     }
     
-    
     function gcd(uint256 x, uint256 y) public pure returns (uint256 z) {
         z = y;
     	while(x % y != 0)
